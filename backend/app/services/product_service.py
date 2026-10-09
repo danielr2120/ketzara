@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFoundError
@@ -13,6 +13,16 @@ def list_products(db: Session, active: bool | None = None, search: str | None = 
         stmt = stmt.where(Product.active == active)
     if search and search.strip():
         stmt = stmt.where(Product.name.ilike(like_pattern(search.strip()), escape="\\"))
+    return list(db.scalars(stmt))
+
+
+def list_available_products(db: Session) -> list[Product]:
+    """Productos que el cliente puede pedir: activos y no agotados (stock vacío = sin control)."""
+    stmt = (
+        select(Product)
+        .where(Product.active.is_(True), or_(Product.stock.is_(None), Product.stock > 0))
+        .order_by(Product.name)
+    )
     return list(db.scalars(stmt))
 
 

@@ -15,6 +15,13 @@ class ProductIn(InputSchema):
     clean_optional_texts = field_validator("description")(empty_to_none)
 
 
+class PublicProductOut(OutputSchema):
+    id: int
+    name: str
+    description: str | None
+    price: Money
+
+
 class ProductOut(OutputSchema):
     id: int
     name: str

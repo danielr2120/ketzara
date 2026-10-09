@@ -1,6 +1,9 @@
-import { useParams } from "react-router-dom";
+import { CheckCircle2 } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { publicApi } from "../api";
 import { OrderProgress } from "../components/OrderProgress";
+import { PublicLayout } from "../components/PublicLayout";
+import { TrackingLink } from "../components/TrackingLink";
 import { ErrorAlert } from "../components/ui/ErrorAlert";
 import { Loading } from "../components/ui/Loading";
 import { useAsync } from "../hooks/useAsync";
@@ -9,21 +12,29 @@ import { formatDateTime, formatMoney } from "../lib/format";
 /** Página que ve el cliente: sin menú ni acceso al resto de la aplicación. */
 export function PublicTrackingPage() {
   const code = useParams().code ?? "";
+  const justCreated = Boolean((useLocation().state as { created?: boolean } | null)?.created);
   const { data: order, error, loading, reload } = useAsync(() => publicApi.trackOrder(code), [code]);
 
   return (
-    <div className="min-h-screen px-4 py-10">
-      <div className="mx-auto max-w-xl">
-        <div className="mb-6 flex items-center gap-2">
-          <img src="/favicon.svg" alt="" className="size-8" />
-          <span className="text-lg font-semibold tracking-tight text-slate-900">Ketzara</span>
-        </div>
-
-        {loading && !order ? (
-          <Loading />
-        ) : error || !order ? (
-          <ErrorAlert message={error ?? "No se pudo cargar el pedido"} onRetry={reload} />
-        ) : (
+    <PublicLayout>
+      {loading && !order ? (
+        <Loading />
+      ) : error || !order ? (
+        <ErrorAlert message={error ?? "No se pudo cargar el pedido"} onRetry={reload} />
+      ) : (
+        <div className="space-y-4">
+          {justCreated && (
+            <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-800">
+                <CheckCircle2 className="size-5 shrink-0" />
+                <p className="font-semibold">¡Recibimos tu pedido!</p>
+              </div>
+              <p className="text-sm text-emerald-900">
+                Te contactaremos para confirmarlo y acordar el envío. Guarda este enlace para consultar el estado de tu pedido cuando quieras.
+              </p>
+              <TrackingLink code={code} />
+            </div>
+          )}
           <div className="card overflow-hidden">
             <div className="border-b border-slate-100 p-5">
               <p className="text-xs text-slate-500">Tu pedido</p>
@@ -62,8 +73,13 @@ export function PublicTrackingPage() {
               </dl>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+          {justCreated && (
+            <p className="text-center text-sm">
+              <Link to="/" className="font-medium text-indigo-700 hover:underline">Hacer otro pedido</Link>
+            </p>
+          )}
+        </div>
+      )}
+    </PublicLayout>
   );
 }

@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
+import { clearSession, loadSession, SESSION_EXPIRED_EVENT } from "./session";
+
+const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) || "/api").replace(/\/+$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -28,20 +30,33 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return `${API_URL}${path}${qs ? `?${qs}` : ""}`;
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+const UNEXPECTED_FORMAT = "El servidor respondió en un formato inesperado. Revisa la URL de la API.";
+
+async function send(path: string, options: RequestOptions): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  const token = loadSession()?.token;
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   let response: Response;
   try {
     response = await fetch(buildUrl(path, options.query), {
       method: options.method ?? "GET",
-      headers: options.body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
   } catch {
     throw new ApiError("No se pudo conectar con el servidor. Verifica tu conexión.", 0);
   }
 
-  const data = await response.json().catch(() => null);
+  // En /auth/login un 401 solo significa credenciales incorrectas.
+  if (response.status === 401 && !path.startsWith("/auth/")) {
+    clearSession();
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
+
   if (!response.ok) {
+    const data = await response.json().catch(() => null);
     const message =
       typeof data?.detail === "string" ? data.detail : "Ocurrió un error inesperado. Intenta nuevamente.";
     const fieldErrors: Record<string, string> = {};
@@ -52,7 +67,26 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
     throw new ApiError(message, response.status, fieldErrors);
   }
+  return response;
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options);
+  const data = await response.json().catch(() => null);
+  if (data === null) {
+    // Ocurre cuando VITE_API_URL no apunta al backend y se recibe el index.html del frontend.
+    throw new ApiError(UNEXPECTED_FORMAT, response.status);
+  }
   return data as T;
+}
+
+/** Descarga un archivo generado por la API (por ejemplo, un Excel). */
+export async function requestFile(path: string, query?: Record<string, QueryValue>): Promise<Blob> {
+  const response = await send(path, { query });
+  if (response.headers.get("Content-Type")?.includes("text/html")) {
+    throw new ApiError(UNEXPECTED_FORMAT, response.status);
+  }
+  return response.blob();
 }
 
 export function errorMessage(error: unknown): string {

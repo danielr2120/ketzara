@@ -100,7 +100,7 @@ function OrderConfirmation({ order, onNew }: { order: Order; onNew: () => void }
           </div>
         </div>
         <div className="flex flex-col gap-2 border-t border-slate-100 p-4 sm:flex-row sm:justify-end">
-          <Link to={`/orders/${order.id}`} className="btn-secondary">Ver pedido</Link>
+          <Link to={`/admin/orders/${order.id}`} className="btn-secondary">Ver pedido</Link>
           <button type="button" className="btn-primary" onClick={onNew}>
             <Plus className="size-4" /> Nuevo pedido
           </button>

@@ -14,7 +14,7 @@ export function OrdersTable({ orders }: { orders: OrderSummary[] }) {
       <ul className="divide-y divide-slate-100 md:hidden">
         {orders.map((o) => (
           <li key={o.id}>
-            <Link to={`/orders/${o.id}`} className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+            <Link to={`/admin/orders/${o.id}`} className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-slate-50">
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900">{o.order_number}</p>
                 <p className="truncate text-sm text-slate-700">{o.customer_name}</p>
@@ -44,9 +44,9 @@ export function OrdersTable({ orders }: { orders: OrderSummary[] }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {orders.map((o) => (
-              <tr key={o.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/orders/${o.id}`)}>
+              <tr key={o.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/orders/${o.id}`)}>
                 <td className="px-4 py-3 font-semibold whitespace-nowrap text-slate-900">
-                  <Link to={`/orders/${o.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-indigo-600">
+                  <Link to={`/admin/orders/${o.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-indigo-600">
                     {o.order_number}
                   </Link>
                 </td>

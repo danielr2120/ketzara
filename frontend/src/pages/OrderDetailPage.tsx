@@ -56,7 +56,7 @@ export function OrderDetailPage() {
   if (error || !order)
     return (
       <div className="space-y-4">
-        <Link to="/orders" className="btn-ghost -ml-3"><ArrowLeft className="size-4" /> Pedidos</Link>
+        <Link to="/admin/orders" className="btn-ghost -ml-3"><ArrowLeft className="size-4" /> Pedidos</Link>
         <ErrorAlert message={error ?? "Pedido no encontrado"} onRetry={reload} />
       </div>
     );
@@ -65,7 +65,7 @@ export function OrderDetailPage() {
 
   return (
     <>
-      <Link to="/orders" className="btn-ghost mb-2 -ml-3"><ArrowLeft className="size-4" /> Pedidos</Link>
+      <Link to="/admin/orders" className="btn-ghost mb-2 -ml-3"><ArrowLeft className="size-4" /> Pedidos</Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -78,7 +78,7 @@ export function OrderDetailPage() {
         <div className="flex flex-wrap gap-2">
           {!isCancelled && (
             <>
-              <Link to={`/orders/${order.id}/edit`} className="btn-secondary"><Pencil className="size-4" /> Editar</Link>
+              <Link to={`/admin/orders/${order.id}/edit`} className="btn-secondary"><Pencil className="size-4" /> Editar</Link>
               <button type="button" className="btn-danger" onClick={() => setConfirmCancel(true)}>
                 <Ban className="size-4" /> Cancelar pedido
               </button>

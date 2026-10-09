@@ -1,23 +1,36 @@
-import { ClipboardList, LayoutDashboard, Menu, Package, PlusCircle, Search, X } from "lucide-react";
+import {
+  ClipboardList,
+  ExternalLink,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  PlusCircle,
+  Search,
+  Store,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, isActive: (p: string) => p === "/" },
-  { to: "/orders/new", label: "Nuevo pedido", icon: PlusCircle, isActive: (p: string) => p === "/orders/new" },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, isActive: (p: string) => p === "/admin" },
+  { to: "/admin/orders/new", label: "Nuevo pedido", icon: PlusCircle, isActive: (p: string) => p === "/admin/orders/new" },
   {
-    to: "/orders",
+    to: "/admin/orders",
     label: "Pedidos",
     icon: ClipboardList,
-    isActive: (p: string) => p.startsWith("/orders") && p !== "/orders/new",
+    isActive: (p: string) => p.startsWith("/admin/orders") && p !== "/admin/orders/new",
   },
-  { to: "/consultar", label: "Consultar pedido", icon: Search, isActive: (p: string) => p === "/consultar" },
-  { to: "/products", label: "Productos", icon: Package, isActive: (p: string) => p.startsWith("/products") },
+  { to: "/admin/consultar", label: "Consultar pedido", icon: Search, isActive: (p: string) => p === "/admin/consultar" },
+  { to: "/admin/products", label: "Productos", icon: Package, isActive: (p: string) => p.startsWith("/admin/products") },
 ];
 
 function Brand() {
   return (
-    <Link to="/" className="flex items-center gap-2">
+    <Link to="/admin" className="flex items-center gap-2">
       <img src="/favicon.svg" alt="" className="size-8" />
       <span className="text-lg font-semibold tracking-tight text-slate-900">Ketzara</span>
     </Link>
@@ -43,7 +56,36 @@ function NavItems({ pathname }: { pathname: string }) {
           </Link>
         );
       })}
+      <a
+        href="/"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 flex items-center gap-3 rounded-lg border-t border-slate-100 px-3 pt-4 pb-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+      >
+        <Store className="size-5" />
+        Página para clientes
+        <ExternalLink className="ml-auto size-4 text-slate-400" />
+      </a>
     </nav>
+  );
+}
+
+function Account() {
+  const { session, logout } = useAuth();
+  return (
+    <div className="space-y-1 border-t border-slate-100 pt-4 text-sm">
+      <p className="flex items-center gap-3 px-3 py-1 text-slate-500">
+        <UserRound className="size-5 shrink-0" />
+        <span className="truncate">{session?.username}</span>
+      </p>
+      <button
+        type="button"
+        className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        onClick={logout}
+      >
+        <LogOut className="size-5" /> Cerrar sesión
+      </button>
+    </div>
   );
 }
 
@@ -58,6 +100,9 @@ export function Layout() {
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col gap-6 border-r border-slate-200 bg-white p-4 md:flex">
         <Brand />
         <NavItems pathname={pathname} />
+        <div className="mt-auto">
+          <Account />
+        </div>
       </aside>
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
@@ -67,8 +112,9 @@ export function Layout() {
         </button>
       </header>
       {menuOpen && (
-        <div className="fixed inset-x-0 top-[57px] z-20 border-b border-slate-200 bg-white p-4 shadow-lg md:hidden">
+        <div className="fixed inset-x-0 top-[57px] z-20 space-y-4 border-b border-slate-200 bg-white p-4 shadow-lg md:hidden">
           <NavItems pathname={pathname} />
+          <Account />
         </div>
       )}
 

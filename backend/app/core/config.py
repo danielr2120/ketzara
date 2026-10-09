@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     app_timezone: str = "America/Bogota"
 
+    # Acceso a la administración. Sin contraseña o sin secreto nadie puede iniciar sesión.
+    admin_username: str = "admin"
+    admin_password: str | None = None
+    auth_secret: str | None = None
+
     @field_validator("database_url", "test_database_url")
     @classmethod
     def use_psycopg_driver(cls, url: str | None) -> str | None:

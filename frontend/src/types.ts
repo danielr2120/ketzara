@@ -8,6 +8,12 @@ export interface Meta {
   order_statuses: Option[];
 }
 
+export interface LoginResponse {
+  access_token: string;
+  username: string;
+  expires_at: string;
+}
+
 export interface Customer {
   id: number;
   name: string;
@@ -82,6 +88,24 @@ export interface PublicOrder {
   items: { product_name: string; quantity: number; subtotal: number }[];
   shipping_cost: number;
   total: number;
+}
+
+export interface PublicOrderCreated extends PublicOrder {
+  tracking_code: string;
+}
+
+export interface PublicProduct {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+}
+
+export interface PublicOrderInput {
+  customer: CustomerInput;
+  items: { product_id: number; quantity: number }[];
+  payment_method: string;
+  notes: string | null;
 }
 
 export interface OrderItemInput {

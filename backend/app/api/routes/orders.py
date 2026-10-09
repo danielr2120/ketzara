@@ -1,29 +1,52 @@
-from datetime import date
+from datetime import date, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import DbSession
 from app.core.config import get_settings
 from app.schemas.order import OrderIn, OrderOut, OrderPage, OrderStatusIn
-from app.services import order_service
+from app.services import export_service, order_service
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def order_filters(
+    search: str | None = Query(None, max_length=100),
+    status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> order_service.OrderFilters:
+    return order_service.OrderFilters(
+        search=search, status=status or None, date_from=date_from, date_to=date_to
+    )
+
+
+Filters = Annotated[order_service.OrderFilters, Depends(order_filters)]
 
 
 @router.get("", response_model=OrderPage)
 def list_orders(
     db: DbSession,
-    search: str | None = Query(None, max_length=100),
-    status: str | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
+    filters: Filters,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    filters = order_service.OrderFilters(
-        search=search, status=status or None, date_from=date_from, date_to=date_to
-    )
     return order_service.list_orders(db, filters, get_settings().tz, page, page_size)
+
+
+@router.get("/export", response_class=Response)
+def export_orders(db: DbSession, filters: Filters):
+    tz = get_settings().tz
+    orders = order_service.list_orders_for_export(db, filters, tz)
+    filename = f"pedidos-{datetime.now(tz):%Y-%m-%d}.xlsx"
+    return Response(
+        content=export_service.build_orders_workbook(orders, tz),
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)

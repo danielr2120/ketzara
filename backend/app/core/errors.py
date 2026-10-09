@@ -28,6 +28,18 @@ class BusinessRuleError(AppError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
+class UnauthorizedError(AppError):
+    status_code = status.HTTP_401_UNAUTHORIZED
+
+
+class TooManyRequestsError(AppError):
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+
+
+class ServiceUnavailableError(AppError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 _VALIDATION_MESSAGES = {
     "missing": "Este campo es obligatorio",
     "string_too_short": "Este campo es obligatorio",

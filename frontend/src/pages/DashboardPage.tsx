@@ -43,7 +43,7 @@ export function DashboardPage() {
         title="Dashboard"
         description="Resumen de la operación de hoy y del mes."
         actions={
-          <Link to="/orders/new" className="btn-primary">
+          <Link to="/admin/orders/new" className="btn-primary">
             <Plus className="size-4" /> Nuevo pedido
           </Link>
         }
@@ -56,8 +56,8 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard label="Pedidos de hoy" value={data.orders_today} icon={CalendarDays} tone="bg-indigo-50 text-indigo-600" to={`/orders?date_from=${today}&date_to=${today}`} />
-            <StatCard label="Pendientes" value={data.pending_orders} icon={Clock} tone="bg-amber-50 text-amber-600" to="/orders?status=pending" />
+            <StatCard label="Pedidos de hoy" value={data.orders_today} icon={CalendarDays} tone="bg-indigo-50 text-indigo-600" to={`/admin/orders?date_from=${today}&date_to=${today}`} />
+            <StatCard label="Pendientes" value={data.pending_orders} icon={Clock} tone="bg-amber-50 text-amber-600" to="/admin/orders?status=pending" />
             <StatCard label="Entregados (mes)" value={data.delivered_this_month} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" />
             <StatCard label="Ventas del día" value={formatMoney(data.sales_today)} icon={DollarSign} tone="bg-sky-50 text-sky-600" />
             <StatCard label="Ventas del mes" value={formatMoney(data.sales_this_month)} icon={TrendingUp} tone="bg-violet-50 text-violet-600" />
@@ -66,11 +66,11 @@ export function DashboardPage() {
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h2 className="text-base font-semibold text-slate-900">Últimos pedidos</h2>
-              <Link to="/orders" className="text-sm font-medium text-indigo-600 hover:underline">Ver todos</Link>
+              <Link to="/admin/orders" className="text-sm font-medium text-indigo-600 hover:underline">Ver todos</Link>
             </div>
             {data.recent_orders.length === 0 ? (
               <EmptyState title="Aún no hay pedidos">
-                <Link to="/orders/new" className="text-indigo-600 hover:underline">Registrar el primer pedido</Link>
+                <Link to="/admin/orders/new" className="text-indigo-600 hover:underline">Registrar el primer pedido</Link>
               </EmptyState>
             ) : (
               <OrdersTable orders={data.recent_orders} />

@@ -6,8 +6,11 @@ Aplicación web sencilla para registrar pedidos, consultarlos y seguir su estado
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS (`frontend/`)
 - **Base de datos:** PostgreSQL 16 en Docker (`docker-compose.yml`)
 
-> La aplicación no tiene inicio de sesión: cualquier persona con acceso a la URL puede ver y modificar pedidos.
-> Úsala en una red de confianza o detrás de un acceso restringido si la publicas en internet.
+| Enlace | Para quién |
+|---|---|
+| `/` | Clientes: hacer un pedido (también responde en `/pedir`, el enlace anterior) |
+| `/seguimiento/<código>` | Clientes: ver el estado de su pedido |
+| `/admin` | Administración: requiere usuario y contraseña (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) |
 
 ## Puesta en marcha
 
@@ -50,6 +53,8 @@ Pruebas del backend (usan la base `ketzara_test`): `.\.venv\Scripts\python -m py
    - `DATABASE_URL`: la conexión de Supabase del paso 2.
    - `CORS_ORIGINS`: la URL de Vercel (paso 4), por ejemplo `https://ketzara.vercel.app`.
      Puedes poner un valor temporal y corregirlo después.
+   - `ADMIN_USERNAME` y `ADMIN_PASSWORD`: el usuario y la contraseña para entrar a la administración.
+     `AUTH_SECRET` lo genera Render. Al cambiar la contraseña se cierran todas las sesiones abiertas.
    Al terminar, comprueba `https://<servicio>.onrender.com/api/health` → `{"status":"ok"}`.
 4. **Vercel:** Add New → Project → elige el repositorio, **Root Directory = `frontend`**, y agrega la variable
    `VITE_API_URL=https://<servicio>.onrender.com/api`. Despliega.
@@ -87,6 +92,9 @@ frontend/src/
 - **Enlace para el cliente:** cada pedido tiene un `tracking_code` aleatorio. El enlace
   `/seguimiento/<código>` muestra solo el estado, los productos y el total de ese pedido (sin teléfono ni dirección),
   y usa el endpoint público `GET /api/public/orders/{código}`.
+- **Acceso:** un único usuario administrador definido en variables de entorno. El inicio de sesión entrega un token
+  firmado (válido 7 días) que el frontend envía en `Authorization: Bearer`. Tras 10 intentos fallidos desde la misma IP
+  se bloquea el inicio de sesión durante 15 minutos.
 - **Cancelación:** los pedidos nunca se borran; se marcan como `Cancelado` y dejan de contar en las ventas.
 - **Fechas:** "hoy" y "este mes" se calculan con `APP_TIMEZONE` (por defecto `America/Bogota`).
 - **Agregar un método de pago o estado:** editar `backend/app/core/constants.py`. El frontend los obtiene de `GET /api/meta`.

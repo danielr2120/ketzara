@@ -16,7 +16,7 @@ from app.core.constants import (
 )
 from app.core.errors import BusinessRuleError, NotFoundError
 from app.models import Customer, Order, OrderItem, Product, order_number_seq
-from app.schemas.order import OrderIn, OrderItemIn
+from app.schemas.order import OrderIn, OrderItemIn, PublicOrderIn
 from app.services import customer_service
 from app.services.utils import end_of_day_exclusive, like_pattern, start_of_day
 
@@ -95,6 +95,23 @@ def create_order(db: Session, data: OrderIn) -> Order:
     return get_order(db, order.id)
 
 
+def create_public_order(db: Session, data: PublicOrderIn) -> Order:
+    """Pedido hecho por el cliente: usa siempre el precio del catálogo y no admite productos agotados."""
+    product_ids = {i.product_id for i in data.items}
+    sold_out = db.scalar(
+        select(Product.name).where(Product.id.in_(product_ids), Product.stock == 0).limit(1)
+    )
+    if sold_out:
+        raise BusinessRuleError(f"El producto «{sold_out}» está agotado")
+    order_data = OrderIn(
+        customer=data.customer,
+        items=[OrderItemIn(product_id=i.product_id, quantity=i.quantity) for i in data.items],
+        payment_method=data.payment_method,
+        notes=data.notes,
+    )
+    return create_order(db, order_data)
+
+
 def get_order(db: Session, order_id: int) -> Order:
     order = db.execute(
         select(Order).where(Order.id == order_id).execution_options(populate_existing=True)
@@ -165,6 +182,11 @@ def _apply_filters(stmt: Select, filters: OrderFilters, tz: ZoneInfo) -> Select:
     if filters.date_to:
         stmt = stmt.where(Order.created_at < end_of_day_exclusive(filters.date_to, tz))
     return stmt
+
+
+def list_orders_for_export(db: Session, filters: OrderFilters, tz: ZoneInfo) -> list[Order]:
+    stmt = _apply_filters(select(Order).join(Customer, Order.customer_id == Customer.id), filters, tz)
+    return list(db.scalars(stmt.order_by(Order.id.desc())).unique())
 
 
 def list_orders(

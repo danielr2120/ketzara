@@ -14,6 +14,12 @@ def validate_status(value: str) -> str:
     return value
 
 
+def validate_payment_method(value: str) -> str:
+    if value not in PAYMENT_METHODS:
+        raise ValueError("Método de pago no válido")
+    return value
+
+
 class OrderItemIn(InputSchema):
     product_id: int | None = Field(default=None, gt=0)
     product_name: str | None = Field(default=None, max_length=150)
@@ -41,13 +47,24 @@ class OrderIn(InputSchema):
     notes: str | None = Field(default=None, max_length=2000)
 
     clean_optional_texts = field_validator("notes")(empty_to_none)
+    check_payment_method = field_validator("payment_method")(validate_payment_method)
 
-    @field_validator("payment_method")
-    @classmethod
-    def check_payment_method(cls, value: str) -> str:
-        if value not in PAYMENT_METHODS:
-            raise ValueError("Método de pago no válido")
-        return value
+
+class PublicOrderItemIn(InputSchema):
+    product_id: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=1000)
+
+
+class PublicOrderIn(InputSchema):
+    """Pedido hecho por el cliente: solo productos del catálogo, a su precio y sin costo de envío."""
+
+    customer: CustomerIn
+    items: list[PublicOrderItemIn] = Field(min_length=1, max_length=50)
+    payment_method: str
+    notes: str | None = Field(default=None, max_length=2000)
+
+    clean_optional_texts = field_validator("notes")(empty_to_none)
+    check_payment_method = field_validator("payment_method")(validate_payment_method)
 
 
 class OrderStatusIn(InputSchema):
@@ -101,6 +118,10 @@ class PublicOrderOut(OutputSchema):
     items: list[PublicOrderItem]
     shipping_cost: Money
     total: Money
+
+
+class PublicOrderCreated(PublicOrderOut):
+    tracking_code: str
 
 
 class OrderSummary(OutputSchema):

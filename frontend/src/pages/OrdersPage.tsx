@@ -1,7 +1,8 @@
-﻿import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+﻿import { ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Plus, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ordersApi } from "../api";
+import { errorMessage } from "../api/client";
 import { OrdersTable } from "../components/OrdersTable";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorAlert } from "../components/ui/ErrorAlert";
@@ -48,9 +49,31 @@ export function OrdersPage() {
     [search, status, dateFrom, dateTo, page],
   );
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
   const hasFilters = FILTER_KEYS.some((k) => params.get(k));
   const totalPages = data ? Math.max(Math.ceil(data.total / data.page_size), 1) : 1;
   const today = todayIso();
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const file = await ordersApi.exportExcel({ search, status, date_from: dateFrom, date_to: dateTo });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `pedidos-${today}.xlsx`;
+      link.click();
+      // Safari cancela la descarga si la URL se libera de inmediato.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setExportError(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <>
@@ -58,11 +81,29 @@ export function OrdersPage() {
         title="Pedidos"
         description="Consulta, busca y filtra los pedidos registrados."
         actions={
-          <Link to="/orders/new" className="btn-primary">
-            <Plus className="size-4" /> Nuevo pedido
-          </Link>
+          <>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleExport}
+              disabled={exporting || data?.total === 0}
+              title={hasFilters ? "Descarga los pedidos que coinciden con los filtros" : "Descarga todos los pedidos"}
+            >
+              {exporting ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+              {hasFilters ? "Exportar filtrados" : "Exportar a Excel"}
+            </button>
+            <Link to="/admin/orders/new" className="btn-primary">
+              <Plus className="size-4" /> Nuevo pedido
+            </Link>
+          </>
         }
       />
+
+      {exportError && (
+        <div className="mb-4">
+          <ErrorAlert message={exportError} onRetry={handleExport} />
+        </div>
+      )}
 
       <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
         <div className="relative sm:col-span-2 lg:col-span-1">
@@ -121,7 +162,7 @@ export function OrdersPage() {
           <div className="p-4"><ErrorAlert message={error} onRetry={reload} /></div>
         ) : !data || data.items.length === 0 ? (
           <EmptyState title={hasFilters ? "No se encontraron pedidos" : "Aún no hay pedidos"}>
-            {hasFilters ? "Prueba con otros filtros." : <Link to="/orders/new" className="text-indigo-600 hover:underline">Registrar el primer pedido</Link>}
+            {hasFilters ? "Prueba con otros filtros." : <Link to="/admin/orders/new" className="text-indigo-600 hover:underline">Registrar el primer pedido</Link>}
           </EmptyState>
         ) : (
           <div className={loading ? "opacity-60 transition-opacity" : ""}>

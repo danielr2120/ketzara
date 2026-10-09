@@ -1,5 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
+from io import BytesIO
+
+from openpyxl import load_workbook
 
 from tests.conftest import order_payload
 
@@ -164,6 +167,97 @@ def test_public_tracking_link(client, product):
     assert set(data["items"][0]) == {"product_name", "quantity", "subtotal"}
 
     assert client.get("/api/public/orders/no-existe").status_code == 404
+
+
+def test_public_catalog_hides_inactive_and_sold_out(client, product):
+    client.post("/api/products", json={"name": "Inactivo", "price": 1000, "active": False})
+    client.post("/api/products", json={"name": "Agotado", "price": 1000, "stock": 0})
+    client.post("/api/products", json={"name": "Sin control de stock", "price": 1000})
+
+    products = client.get("/api/public/products").json()
+    assert [p["name"] for p in products] == ["Producto A", "Sin control de stock"]
+    assert set(products[0]) == {"id", "name", "description", "price"}
+
+
+def test_public_order_uses_catalog_price(client, product):
+    payload = {
+        "customer": {"name": "Ana Ruiz", "phone": "311 555 0000", "address": "Calle 9 # 8-7"},
+        "items": [{"product_id": product["id"], "quantity": 3}],
+        "payment_method": "nequi",
+        "notes": "Timbre dañado",
+    }
+    res = client.post("/api/public/orders", json=payload)
+    assert res.status_code == 201, res.text
+    created = res.json()
+    assert created["order_number"] == "PED-000001"
+    assert created["status"] == "pending"
+    assert created["total"] == 75000
+    assert created["shipping_cost"] == 0
+    assert "customer" not in created
+
+    tracked = client.get(f"/api/public/orders/{created['tracking_code']}").json()
+    assert tracked["order_number"] == "PED-000001"
+
+    order = client.get("/api/orders/number/PED-000001").json()
+    assert order["customer"]["phone"] == "3115550000"
+    assert order["notes"] == "Timbre dañado"
+    assert order["items"][0]["unit_price"] == 25000
+
+
+def test_public_order_rejects_price_override_and_unavailable_products(client, product):
+    base = {
+        "customer": {"name": "Ana Ruiz", "phone": "3115550000", "address": "Calle 9"},
+        "payment_method": "cash",
+    }
+    res = client.post(
+        "/api/public/orders",
+        json={**base, "items": [{"product_id": product["id"], "quantity": 1, "unit_price": 1}]},
+    )
+    assert res.status_code == 422
+    res = client.post("/api/public/orders", json={**base, "shipping_cost": 0, "items": [{"product_id": product["id"], "quantity": 1}]})
+    assert res.status_code == 422
+
+    sold_out = client.post("/api/products", json={"name": "Agotado", "price": 1000, "stock": 0}).json()
+    res = client.post("/api/public/orders", json={**base, "items": [{"product_id": sold_out["id"], "quantity": 1}]})
+    assert res.status_code == 422
+    assert res.json()["detail"] == "El producto «Agotado» está agotado"
+
+    client.put(f"/api/products/{product['id']}", json={"name": "Producto A", "price": 1, "active": False})
+    res = client.post("/api/public/orders", json={**base, "items": [{"product_id": product["id"], "quantity": 1}]})
+    assert res.status_code == 422
+
+
+def test_export_orders_to_excel(client, product):
+    client.post("/api/orders", json=order_payload(product["id"], shipping_cost=5000, notes="Urgente"))
+    other = order_payload(product["id"])
+    other["customer"] = {"name": "=HYPERLINK(\"http://x\")", "phone": "3109998877", "address": "Cra 7"}
+    second = client.post("/api/orders", json=other).json()
+    client.patch(f"/api/orders/{second['id']}/status", json={"status": "cancelled"})
+
+    res = client.get("/api/orders/export")
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/vnd.openxmlformats")
+    assert "attachment" in res.headers["content-disposition"]
+
+    wb = load_workbook(BytesIO(res.content))
+    orders = list(wb["Pedidos"].iter_rows(values_only=True))
+    assert orders[0][:3] == ("Pedido", "Fecha", "Estado")
+    assert [row[0] for row in orders[1:]] == ["PED-000002", "PED-000001"]
+    first = orders[2]
+    assert first[2] == "Pendiente"
+    assert first[4] == "3001234567"
+    assert first[7] == "Efectivo"
+    assert first[8] == "2 × Producto A"
+    assert first[9:13] == (50000, 5000, 55000, "Urgente")
+    assert wb["Pedidos"]["D2"].data_type == "s"
+    assert orders[1][3] == '=HYPERLINK("http://x")'
+
+    items = list(wb["Productos"].iter_rows(values_only=True))
+    assert len(items) == 3
+    assert items[1][4:] == ("Producto A", 2, 25000, 50000)
+
+    filtered = load_workbook(BytesIO(client.get("/api/orders/export", params={"status": "cancelled"}).content))
+    assert [row[0] for row in filtered["Pedidos"].iter_rows(min_row=2, values_only=True)] == ["PED-000002"]
 
 
 def test_health(client):

@@ -1,6 +1,7 @@
 import type {
   Customer,
   DashboardSummary,
+  LoginResponse,
   Meta,
   Order,
   OrderFilters,
@@ -9,11 +10,22 @@ import type {
   Product,
   ProductInput,
   PublicOrder,
+  PublicOrderCreated,
+  PublicOrderInput,
+  PublicProduct,
 } from "../types";
-import { request } from "./client";
+import { request, requestFile } from "./client";
+
+export const authApi = {
+  login: (username: string, password: string) =>
+    request<LoginResponse>("/auth/login", { method: "POST", body: { username, password } }),
+};
 
 export const publicApi = {
   trackOrder: (code: string) => request<PublicOrder>(`/public/orders/${encodeURIComponent(code)}`),
+  products: () => request<PublicProduct[]>("/public/products"),
+  createOrder: (data: PublicOrderInput) =>
+    request<PublicOrderCreated>("/public/orders", { method: "POST", body: data }),
 };
 
 export const metaApi = {
@@ -37,6 +49,7 @@ export const productsApi = {
 
 export const ordersApi = {
   list: (filters: OrderFilters) => request<OrderPage>("/orders", { query: { ...filters } }),
+  exportExcel: (filters: OrderFilters) => requestFile("/orders/export", { ...filters }),
   get: (id: number) => request<Order>(`/orders/${id}`),
   getByNumber: (number: string) => request<Order>(`/orders/number/${encodeURIComponent(number)}`),
   create: (data: OrderInput) => request<Order>("/orders", { method: "POST", body: data }),
